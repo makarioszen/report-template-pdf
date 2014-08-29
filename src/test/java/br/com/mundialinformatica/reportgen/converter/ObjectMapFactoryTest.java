@@ -12,9 +12,6 @@ public class ObjectMapFactoryTest {
 		String inputfilepath = "D:\\tmp\\variable.zip.docx";
 		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage
 				.load(new java.io.File(inputfilepath));
-		
-		
-		
 	}
 
 }

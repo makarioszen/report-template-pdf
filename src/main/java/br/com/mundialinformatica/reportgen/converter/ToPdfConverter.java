@@ -6,7 +6,7 @@ import org.docx4j.Docx4J;
 import org.docx4j.convert.out.FOSettings;
 import org.docx4j.samples.AbstractSample;
 
-import br.com.mundialinformatica.reportgen.model.ObjectMapOld;
+import br.com.mundialinformatica.reportgen.model.ObjectMap;
 
 public class ToPdfConverter extends AbstractSample {
 
@@ -56,7 +56,7 @@ public class ToPdfConverter extends AbstractSample {
 			foSettings.setFoDumpFile(new java.io.File(inputfilepath + ".fo"));
 		}
 
-		ObjectMapOld objMap = new ObjectMapOld();
+		ObjectMap objMap = new ObjectMap();
 		WordMlPrepare wordPrepare = new WordMlPrepare(inputfilepath, objMap);
 		foSettings.setWmlPackage(wordPrepare.getWorlMlPackage());
 
