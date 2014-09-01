@@ -4,11 +4,11 @@ import java.io.OutputStream;
 
 import org.docx4j.Docx4J;
 import org.docx4j.convert.out.FOSettings;
-import org.docx4j.samples.AbstractSample;
+import org.docx4j.openpackaging.packages.OpcPackage;
 
-import br.com.mundialinformatica.reportgen.model.ObjectMap;
+public class ToPdfConverter {
 
-public class ToPdfConverter extends AbstractSample {
+	private OpcPackage woWorlMlPackage;
 
 	/*
 	 * NOT WORKING?
@@ -29,51 +29,27 @@ public class ToPdfConverter extends AbstractSample {
 	 */
 
 	// Config for non-command line use
-	static {
-
-		inputfilepath = null; // to generate a docx (and PDF output) containing
-								// font samples
-
-		inputfilepath = System.getProperty("user.dir")
-				+ "/sample-docs/word/sample-docx.docx";
-
-		saveFO = true;
-	}
 
 	// For demo/debugging purposes, save the intermediate XSL FO
 	// Don't do this in production!
-	static boolean saveFO;
 
-	public static void main(String[] args) throws Exception {
+	public ToPdfConverter(OpcPackage woWorlMlPackage) {
+		this.woWorlMlPackage = woWorlMlPackage;
+	}
 
-		try {
-			getInputFilePath(args);
-		} catch (IllegalArgumentException e) {
-		}
+	public void save(String outputfilepath) throws Exception {
 
 		FOSettings foSettings = Docx4J.createFOSettings();
-		if (saveFO) {
-			foSettings.setFoDumpFile(new java.io.File(inputfilepath + ".fo"));
-		}
 
-		ObjectMap objMap = new ObjectMap();
-		WordMlPrepare wordPrepare = new WordMlPrepare(inputfilepath, objMap);
-		foSettings.setWmlPackage(wordPrepare.getWorlMlPackage());
+		foSettings.setWmlPackage(woWorlMlPackage);
 
-		String outputfilepath;
-		if (inputfilepath == null) {
-			outputfilepath = System.getProperty("user.dir")
-					+ "/OUT_FontContent.pdf";
-		} else {
-			outputfilepath = inputfilepath + ".pdf";
-		}
 		OutputStream os = new java.io.FileOutputStream(outputfilepath);
 
 		// Specify whether PDF export uses XSLT or not to create the FO
 		// (XSLT takes longer, but is more complete).
 
 		// Don't care what type of exporter you use
-		Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
+		//Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
 
 		// Prefer the exporter, that uses a xsl transformation
 		// Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
@@ -81,9 +57,8 @@ public class ToPdfConverter extends AbstractSample {
 		// Prefer the exporter, that doesn't use a xsl transformation (= uses a
 		// visitor)
 		// .. faster, but not yet at feature parity
-		// Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_NONXSL);
-
-		System.out.println("Saved: " + outputfilepath);
+		 Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_NONXSL);
+		System.out.println("Fim do pdf");
 	}
 
 }
