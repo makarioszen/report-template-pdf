@@ -77,7 +77,8 @@ public class TemplateMapProducer {
 		if (f.isAnnotationPresent(TemplateMapColumn.class)) {
 			TemplateMapColumn ann = f.getAnnotation(TemplateMapColumn.class);
 			try {
-				String mask = isList ? "${%s.%s}" : "%s.%s";
+				//String mask = isList ? "${%s.%s}" : "%s.%s";
+				String mask = "%s.%s";
 				String var = String.format(mask, clazzName, f.getName());
 				map.put(var, new StringBuilder().append(f.get(obj)).toString());
 			} catch (Exception e) {

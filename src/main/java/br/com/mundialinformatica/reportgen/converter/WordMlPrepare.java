@@ -1,7 +1,6 @@
 package br.com.mundialinformatica.reportgen.converter;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -15,10 +14,11 @@ import org.docx4j.fonts.IdentityPlusMapper;
 import org.docx4j.fonts.Mapper;
 import org.docx4j.fonts.PhysicalFont;
 import org.docx4j.fonts.PhysicalFonts;
+import org.docx4j.model.fields.merge.MailMerger.OutputField;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.packages.OpcPackage;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
-import org.docx4j.openpackaging.parts.WordprocessingML.MainDocumentPart;
+import org.docx4j.wml.CTSimpleField;
 import org.docx4j.wml.ContentAccessor;
 import org.docx4j.wml.Tbl;
 import org.docx4j.wml.Text;
@@ -42,8 +42,17 @@ public class WordMlPrepare {
 	}
 
 	private void setup() throws Docx4JException, JAXBException {
+		
+		setMergeFields();
 		replaceTable();
-		setVariables();
+	}
+
+	private void setMergeFields() throws Docx4JException {
+		org.docx4j.model.fields.merge.MailMerger
+				.setMERGEFIELDInOutput(OutputField.DEFAULT);
+		org.docx4j.model.fields.merge.MailMerger.performMerge(wordMLPackage,
+				objMap.getDateMapFields(), true);
+
 	}
 
 	public OpcPackage getWorlMlPackage() throws Exception {
@@ -73,12 +82,6 @@ public class WordMlPrepare {
 		return wordMLPackage;
 	}
 
-	@SuppressWarnings("restriction")
-	private void setVariables() throws JAXBException, Docx4JException {
-		MainDocumentPart documentPart = wordMLPackage.getMainDocumentPart();
-		documentPart.variableReplace(objMap.getMap());
-	}
-
 	private void replaceTable() throws Docx4JException, JAXBException {
 		List<Object> tables = getAllElementFromObject(
 				wordMLPackage.getMainDocumentPart(), Tbl.class);
@@ -92,7 +95,6 @@ public class WordMlPrepare {
 				if (rows.size() == 2) {
 					// this is our template row
 					Tr templateRow = (Tr) rows.get(1);
-					Map<String, String> eTest = new HashMap<String, String>();
 
 					for (Map<String, String> replacements : list
 							.getValuesList()) {
@@ -115,7 +117,6 @@ public class WordMlPrepare {
 			List<?> textElements = getAllElementFromObject(tbl, Text.class);
 			for (Object text : textElements) {
 				Text textElement = (Text) text;
-
 				// if (textElement.getValue() != null
 				// && textElement.getValue().equals(templateKey))
 				return (Tbl) tbl;
@@ -128,15 +129,30 @@ public class WordMlPrepare {
 	private void addRowToTable(Tbl reviewtable, Tr templateRow,
 			Map<String, String> replacements) {
 		Tr workingRow = (Tr) XmlUtils.deepCopy(templateRow);
-		
-		List<?> textElements = getAllElementFromObject(workingRow, Text.class);
-		for (Object object : textElements) {
-			Text text = (Text) object;
-			System.out.println(text.getValue());
-			String replacementValue = (String) replacements
-					.get(text.getValue());
-			if (replacementValue != null)
-				text.setValue(replacementValue);
+
+		List<?> fieldTc = getAllElementFromObject(workingRow,
+				CTSimpleField.class);
+
+		for (Object oTc : fieldTc) {
+			CTSimpleField tc = (CTSimpleField) oTc;
+			List<?> textElements = getAllElementFromObject(oTc, Text.class);
+			// for (Entry<String, String> entry : replacements.entrySet()) {
+			// System.out.println(entry.getKey() + ":" + entry.getValue());
+			// }
+			String fieldName = tc.getInstr().replaceFirst(
+					"(MERGEFIELD)|(MERGEFORMAT)", "");
+
+			fieldName = fieldName.substring(0, fieldName.indexOf('\\') - 1)
+					.trim();
+			// Se habilitar texto antes e depois no campo do word, o laço falha,
+			// precisará definir
+			// o index manualmente
+			for (Object o : textElements) {
+				Text text = (Text) o;
+				// System.out.println(fieldName + "|");
+				String replacementValue = (String) replacements.get(fieldName);
+				text.setValue(replacementValue != null ? replacementValue : "");
+			}
 		}
 		reviewtable.getContent().add(workingRow);
 	}
