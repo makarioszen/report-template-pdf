@@ -1,6 +1,7 @@
 package br.com.mundialinformatica.reportgen.converter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -14,16 +15,23 @@ import org.docx4j.fonts.IdentityPlusMapper;
 import org.docx4j.fonts.Mapper;
 import org.docx4j.fonts.PhysicalFont;
 import org.docx4j.fonts.PhysicalFonts;
+import org.docx4j.model.fields.merge.DataFieldName;
 import org.docx4j.model.fields.merge.MailMerger.OutputField;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.packages.OpcPackage;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.wml.CTSimpleField;
 import org.docx4j.wml.ContentAccessor;
+import org.docx4j.wml.P;
+import org.docx4j.wml.R;
 import org.docx4j.wml.Tbl;
 import org.docx4j.wml.Text;
 import org.docx4j.wml.Tr;
 
+import br.com.mundialinformatica.reportgen.filters.Filter;
+import br.com.mundialinformatica.reportgen.filters.FilterCurrency;
+import br.com.mundialinformatica.reportgen.filters.FilterDateShort;
+import br.com.mundialinformatica.reportgen.filters.NoFilter;
 import br.com.mundialinformatica.reportgen.model.ObjectList;
 import br.com.mundialinformatica.reportgen.model.ObjectMap;
 
@@ -42,17 +50,39 @@ public class WordMlPrepare {
 	}
 
 	private void setup() throws Docx4JException, JAXBException {
-		
-		setMergeFields();
 		replaceTable();
+		setMergeFields();
+
+	}
+
+	private String getClearFieldName(CTSimpleField ct) {
+		String fieldName = ct.getInstr().replaceAll(
+				"(MERGEFIELD)|(MERGEFORMAT)", "");
+		fieldName = fieldName.substring(0, fieldName.indexOf('\\') - 1).trim();
+		return fieldName;
 	}
 
 	private void setMergeFields() throws Docx4JException {
 		org.docx4j.model.fields.merge.MailMerger
 				.setMERGEFIELDInOutput(OutputField.DEFAULT);
 		org.docx4j.model.fields.merge.MailMerger.performMerge(wordMLPackage,
-				objMap.getDateMapFields(), true);
+				getDateMapFields(), true);
 
+	}
+
+	private Map<DataFieldName, String> getDateMapFields() {
+		Map<DataFieldName, String> result = new HashMap<DataFieldName, String>();
+
+		List<?> objList = getAllElementFromObject(
+				wordMLPackage.getMainDocumentPart(), CTSimpleField.class);
+		for (Object object : objList) {
+			CTSimpleField ct = (CTSimpleField) object;
+			String fieldName = getClearFieldName(ct);
+			String value = getReplacementValue(objMap.getMap(), ct);
+			System.out.println(fieldName + ":" + value);
+			result.put(new DataFieldName(fieldName), value);
+		}
+		return result;
 	}
 
 	public OpcPackage getWorlMlPackage() throws Exception {
@@ -127,34 +157,76 @@ public class WordMlPrepare {
 	}
 
 	private void addRowToTable(Tbl reviewtable, Tr templateRow,
-			Map<String, String> replacements) {
+			Map<String, String> replacements) throws JAXBException {
 		Tr workingRow = (Tr) XmlUtils.deepCopy(templateRow);
+		List<?> fieldP = getAllElementFromObject(workingRow, P.class);
 
-		List<?> fieldTc = getAllElementFromObject(workingRow,
-				CTSimpleField.class);
+		for (Object o : fieldP) {
+			P p = (P) o;
+			List<Object> listP = new ArrayList<Object>();
+			listP.addAll(p.getContent());
 
-		for (Object oTc : fieldTc) {
-			CTSimpleField tc = (CTSimpleField) oTc;
-			List<?> textElements = getAllElementFromObject(oTc, Text.class);
-			// for (Entry<String, String> entry : replacements.entrySet()) {
-			// System.out.println(entry.getKey() + ":" + entry.getValue());
-			// }
-			String fieldName = tc.getInstr().replaceFirst(
-					"(MERGEFIELD)|(MERGEFORMAT)", "");
+			for (Object oTc : listP) {
+				try {
+					if (oTc instanceof JAXBElement) {
+						oTc = ((JAXBElement<?>) oTc).getValue();
+					}
+					if (oTc.getClass().equals(CTSimpleField.class)) {
+						CTSimpleField cts = (CTSimpleField) oTc;
+						List<?> runList = getAllElementFromObject(cts, R.class);
+						String replacementValue = getReplacementValue(
+								replacements, cts);
+						for (Object run : runList) {
+							List<?> textList = getAllElementFromObject(run,
+									Text.class);
+							for (Object textOb : textList) {
+								Text text = (Text) textOb;
+								text.setValue(replacementValue);
+							}
+							p.getContent().add(run);
+						}
 
-			fieldName = fieldName.substring(0, fieldName.indexOf('\\') - 1)
-					.trim();
-			// Se habilitar texto antes e depois no campo do word, o laço falha,
-			// precisará definir
-			// o index manualmente
-			for (Object o : textElements) {
-				Text text = (Text) o;
-				// System.out.println(fieldName + "|");
-				String replacementValue = (String) replacements.get(fieldName);
-				text.setValue(replacementValue != null ? replacementValue : "");
+					}
+				} catch (Exception e) {
+					LOG.error(e);
+				}
+
 			}
 		}
+
+		String workString = XmlUtils.marshaltoString(workingRow, true, false)
+				.replaceAll("<(w:fldSimple)*[^>]+?[^>]*>.*?</\\1>", "");
+		workingRow = (Tr) XmlUtils.unmarshalString(workString);
 		reviewtable.getContent().add(workingRow);
+	}
+
+	private String getReplacementValue(Map<String, String> replacements,
+			CTSimpleField cts) {
+		String fieldName = getClearFieldName(cts);
+		Filter filter = extractFilter(fieldName);
+		fieldName = fieldName.contains("!") ? fieldName.substring(0,
+				fieldName.indexOf('!')) : fieldName;
+		String replacementValue = filter.getValue((String) replacements
+				.get(fieldName));
+		return replacementValue;
+	}
+
+	private Filter extractFilter(String fieldName) {
+
+		Filter filter = new NoFilter();
+		try {
+			String strFilter = fieldName.substring(fieldName.indexOf('!') + 1)
+					.toLowerCase();
+			if (strFilter.equals("currency")) {
+				filter = new FilterCurrency();
+			}
+			if (strFilter.equals("dateshort")) {
+				filter = new FilterDateShort();
+			}
+		} catch (Exception e) {
+			LOG.error("No Filter select", e);
+		}
+		return filter;
 	}
 
 	private List<Object> getAllElementFromObject(Object obj, Class<?> toSearch) {
