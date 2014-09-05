@@ -4,7 +4,7 @@ public class NoFilter implements Filter {
 
 	public String getValue(String value) {
 
-		return value;
+		return value != null ? value : "";
 	}
 
 }

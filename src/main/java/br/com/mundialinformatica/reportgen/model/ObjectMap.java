@@ -3,14 +3,12 @@ package br.com.mundialinformatica.reportgen.model;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import org.docx4j.model.fields.merge.DataFieldName;
 
 public class ObjectMap {
 	private HashMap<String, String> map;
 	private List<ObjectList> objectList;
+	private String objectName;
+
 	public ObjectMap() {
 		objectList = new ArrayList<ObjectList>();
 		map = new HashMap<String, String>();
@@ -32,9 +30,12 @@ public class ObjectMap {
 		this.objectList = objectList;
 	}
 
-	public Map<DataFieldName, String> getDateMapFields() {
-		// TODO Auto-generated method stub
-		return null;
+	public String getObjectName() {
+		return objectName;
+	}
+
+	public void setObjectName(String objectName) {
+		this.objectName = objectName;
 	}
 
 }

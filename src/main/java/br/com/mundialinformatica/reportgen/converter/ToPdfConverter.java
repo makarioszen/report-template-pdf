@@ -52,12 +52,12 @@ public class ToPdfConverter {
 		//Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
 
 		// Prefer the exporter, that uses a xsl transformation
-		// Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
+		 Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_XSL);
 
 		// Prefer the exporter, that doesn't use a xsl transformation (= uses a
 		// visitor)
 		// .. faster, but not yet at feature parity
-		 Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_NONXSL);
+		 //Docx4J.toFO(foSettings, os, Docx4J.FLAG_EXPORT_PREFER_NONXSL);
 		System.out.println("Fim do pdf");
 	}
 

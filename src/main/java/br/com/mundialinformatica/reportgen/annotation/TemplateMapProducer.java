@@ -23,6 +23,7 @@ public class TemplateMapProducer {
 		HashMap<String, String> map = new HashMap<String, String>();
 		addFields(obj, result, map, obj.getClass().getSimpleName(), false);
 		result.setMap(map);
+		result.setObjectName(obj.getClass().getName());
 		return result;
 
 	}
@@ -75,12 +76,16 @@ public class TemplateMapProducer {
 	private void addFieldToMap(Object obj, HashMap<String, String> map,
 			Field f, String clazzName, ObjectMap objMap, boolean isList) {
 		if (f.isAnnotationPresent(TemplateMapColumn.class)) {
-			TemplateMapColumn ann = f.getAnnotation(TemplateMapColumn.class);
+			// TemplateMapColumn ann = f.getAnnotation(TemplateMapColumn.class);
 			try {
-				//String mask = isList ? "${%s.%s}" : "%s.%s";
+				// String mask = isList ? "${%s.%s}" : "%s.%s";
 				String mask = "%s.%s";
 				String var = String.format(mask, clazzName, f.getName());
-				map.put(var, new StringBuilder().append(f.get(obj)).toString());
+				if (f.get(obj) != null) {
+					map.put(var, new StringBuilder().append(f.get(obj))
+							.toString());
+				}
+
 			} catch (Exception e) {
 				LOG.error("Erro load ObjectMapOld", e);
 			}

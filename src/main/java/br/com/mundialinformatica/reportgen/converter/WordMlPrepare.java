@@ -29,8 +29,13 @@ import org.docx4j.wml.Text;
 import org.docx4j.wml.Tr;
 
 import br.com.mundialinformatica.reportgen.filters.Filter;
+import br.com.mundialinformatica.reportgen.filters.FilterCpfCnpj;
 import br.com.mundialinformatica.reportgen.filters.FilterCurrency;
+import br.com.mundialinformatica.reportgen.filters.FilterDateLong;
 import br.com.mundialinformatica.reportgen.filters.FilterDateShort;
+import br.com.mundialinformatica.reportgen.filters.FilterExtenso;
+import br.com.mundialinformatica.reportgen.filters.FilterMaskFloat;
+import br.com.mundialinformatica.reportgen.filters.FilterMaskInteger;
 import br.com.mundialinformatica.reportgen.filters.NoFilter;
 import br.com.mundialinformatica.reportgen.model.ObjectList;
 import br.com.mundialinformatica.reportgen.model.ObjectMap;
@@ -39,20 +44,21 @@ public class WordMlPrepare {
 
 	private Logger LOG = Logger.getLogger(WordMlPrepare.class);
 	private WordprocessingMLPackage wordMLPackage;
-	private final ObjectMap objMap;
+	private final List<ObjectMap> objMapList;
 
-	public WordMlPrepare(String inputfilepath, ObjectMap objMap)
+	public WordMlPrepare(String inputfilepath, List<ObjectMap> objMapList)
 			throws Docx4JException, JAXBException {
-		this.objMap = objMap;
+		this.objMapList = objMapList;
 		this.wordMLPackage = WordprocessingMLPackage.load(new java.io.File(
 				inputfilepath));
 		setup();
 	}
 
 	private void setup() throws Docx4JException, JAXBException {
-		replaceTable();
+		for (ObjectMap obj : objMapList) {
+			replaceTable(obj);
+		}
 		setMergeFields();
-
 	}
 
 	private String getClearFieldName(CTSimpleField ct) {
@@ -66,20 +72,23 @@ public class WordMlPrepare {
 		org.docx4j.model.fields.merge.MailMerger
 				.setMERGEFIELDInOutput(OutputField.DEFAULT);
 		org.docx4j.model.fields.merge.MailMerger.performMerge(wordMLPackage,
-				getDateMapFields(), true);
+				getDataMapFields(), true);
 
 	}
 
-	private Map<DataFieldName, String> getDateMapFields() {
+	private Map<DataFieldName, String> getDataMapFields() {
 		Map<DataFieldName, String> result = new HashMap<DataFieldName, String>();
 
 		List<?> objList = getAllElementFromObject(
 				wordMLPackage.getMainDocumentPart(), CTSimpleField.class);
+		Map<String, String> joinMap = new HashMap<String, String>();
+		for (ObjectMap objMap : objMapList) {
+			joinMap.putAll(objMap.getMap());
+		}
 		for (Object object : objList) {
 			CTSimpleField ct = (CTSimpleField) object;
 			String fieldName = getClearFieldName(ct);
-			String value = getReplacementValue(objMap.getMap(), ct);
-			System.out.println(fieldName + ":" + value);
+			String value = getReplacementValue(joinMap, ct);
 			result.put(new DataFieldName(fieldName), value);
 		}
 		return result;
@@ -112,7 +121,8 @@ public class WordMlPrepare {
 		return wordMLPackage;
 	}
 
-	private void replaceTable() throws Docx4JException, JAXBException {
+	private void replaceTable(ObjectMap objMap) throws Docx4JException,
+			JAXBException {
 		List<Object> tables = getAllElementFromObject(
 				wordMLPackage.getMainDocumentPart(), Tbl.class);
 
@@ -185,7 +195,6 @@ public class WordMlPrepare {
 							}
 							p.getContent().add(run);
 						}
-
 					}
 				} catch (Exception e) {
 					LOG.error(e);
@@ -202,12 +211,18 @@ public class WordMlPrepare {
 
 	private String getReplacementValue(Map<String, String> replacements,
 			CTSimpleField cts) {
-		String fieldName = getClearFieldName(cts);
-		Filter filter = extractFilter(fieldName);
-		fieldName = fieldName.contains("!") ? fieldName.substring(0,
-				fieldName.indexOf('!')) : fieldName;
-		String replacementValue = filter.getValue((String) replacements
-				.get(fieldName));
+		String replacementValue = "";
+		try {
+			String fieldName = getClearFieldName(cts);
+			Filter filter = extractFilter(fieldName);
+			fieldName = fieldName.contains("!") ? fieldName.substring(0,
+					fieldName.indexOf('!')) : fieldName;
+
+			replacementValue = filter.getValue((String) replacements
+					.get(fieldName));
+		} catch (Exception e) {
+			LOG.error(e);
+		}
 		return replacementValue;
 	}
 
@@ -222,6 +237,21 @@ public class WordMlPrepare {
 			}
 			if (strFilter.equals("dateshort")) {
 				filter = new FilterDateShort();
+			}
+			if (strFilter.equals("datelong")) {
+				filter = new FilterDateLong();
+			}
+			if (strFilter.equals("extenso")) {
+				filter = new FilterExtenso();
+			}
+			if (strFilter.contains("maskinteger")) {
+				filter = new FilterMaskInteger(strFilter);
+			}
+			if (strFilter.contains("maskfloat")) {
+				filter = new FilterMaskFloat(strFilter);
+			}
+			if (strFilter.contains("cpfcnpj")) {
+				filter = new FilterCpfCnpj();
 			}
 		} catch (Exception e) {
 			LOG.error("No Filter select", e);
