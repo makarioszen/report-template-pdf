@@ -11,6 +11,8 @@ import org.apache.log4j.Logger;
 import br.com.mundialinformatica.reportgen.model.ObjectList;
 import br.com.mundialinformatica.reportgen.model.ObjectMap;
 
+import com.google.common.collect.ObjectArrays;
+
 public class TemplateMapProducer {
 	private Logger LOG = Logger.getLogger(getClass());
 
@@ -21,6 +23,7 @@ public class TemplateMapProducer {
 		ObjectMap result = new ObjectMap();
 
 		HashMap<String, String> map = new HashMap<String, String>();
+
 		addFields(obj, result, map, obj.getClass().getSimpleName(), false);
 		result.setMap(map);
 		result.setObjectName(obj.getClass().getName());
@@ -30,8 +33,18 @@ public class TemplateMapProducer {
 
 	private void addFields(Object obj, ObjectMap objMap,
 			HashMap<String, String> map, String alias, boolean isList) {
+		Field[] allFields = new Field[] {};
 		Field[] fieldList = obj.getClass().getDeclaredFields();
-		for (Field f : fieldList) {
+		try {
+			Field[] fieldsSuper = obj.getClass().getSuperclass()
+					.getDeclaredFields();
+			allFields = ObjectArrays
+					.concat(fieldsSuper, fieldList, Field.class);
+		} catch (Exception e) {
+			LOG.error(obj.getClass(), e);
+		}
+
+		for (Field f : allFields) {
 			f.setAccessible(true);
 			StringBuilder className = new StringBuilder();
 			if (alias != null && !alias.isEmpty()) {

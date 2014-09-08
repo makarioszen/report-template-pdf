@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
@@ -58,6 +59,7 @@ public class WordMlPrepare {
 		for (ObjectMap obj : objMapList) {
 			replaceTable(obj);
 		}
+
 		setMergeFields();
 	}
 
@@ -157,8 +159,12 @@ public class WordMlPrepare {
 			List<?> textElements = getAllElementFromObject(tbl, Text.class);
 			for (Object text : textElements) {
 				Text textElement = (Text) text;
+
 				// if (textElement.getValue() != null
-				// && textElement.getValue().equals(templateKey))
+				// && textElement.getValue().contains(templateKey)) {
+				// System.out.println(templateKey);
+				// }
+
 				return (Tbl) tbl;
 			}
 		}
@@ -184,13 +190,22 @@ public class WordMlPrepare {
 					if (oTc.getClass().equals(CTSimpleField.class)) {
 						CTSimpleField cts = (CTSimpleField) oTc;
 						List<?> runList = getAllElementFromObject(cts, R.class);
-						String replacementValue = getReplacementValue(
-								replacements, cts);
+						// for (Entry<String, String> rpl : replacements
+						// .entrySet()) {
+						// System.out.println(rpl.getKey() + ":"
+						// + rpl.getValue());
+						// }
+
+						String replacementValue =
+
+						getReplacementValue(replacements, cts);
 						for (Object run : runList) {
 							List<?> textList = getAllElementFromObject(run,
 									Text.class);
 							for (Object textOb : textList) {
 								Text text = (Text) textOb;
+//								System.out.println(text.getValue() + ":"
+//										+ replacementValue);
 								text.setValue(replacementValue);
 							}
 							p.getContent().add(run);
@@ -211,7 +226,7 @@ public class WordMlPrepare {
 
 	private String getReplacementValue(Map<String, String> replacements,
 			CTSimpleField cts) {
-		String replacementValue = "";
+		String replacementValue = ".";
 		try {
 			String fieldName = getClearFieldName(cts);
 			Filter filter = extractFilter(fieldName);
@@ -220,10 +235,12 @@ public class WordMlPrepare {
 
 			replacementValue = filter.getValue((String) replacements
 					.get(fieldName));
+			return replacementValue;
 		} catch (Exception e) {
-			LOG.error(e);
+
+			return "-";
 		}
-		return replacementValue;
+
 	}
 
 	private Filter extractFilter(String fieldName) {
