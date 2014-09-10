@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
@@ -21,6 +20,10 @@ import org.docx4j.model.fields.merge.MailMerger.OutputField;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.packages.OpcPackage;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import org.docx4j.openpackaging.parts.JaxbXmlPart;
+import org.docx4j.openpackaging.parts.relationships.Namespaces;
+import org.docx4j.openpackaging.parts.relationships.RelationshipsPart;
+import org.docx4j.relationships.Relationship;
 import org.docx4j.wml.CTSimpleField;
 import org.docx4j.wml.ContentAccessor;
 import org.docx4j.wml.P;
@@ -73,6 +76,7 @@ public class WordMlPrepare {
 	private void setMergeFields() throws Docx4JException {
 		org.docx4j.model.fields.merge.MailMerger
 				.setMERGEFIELDInOutput(OutputField.DEFAULT);
+
 		org.docx4j.model.fields.merge.MailMerger.performMerge(wordMLPackage,
 				getDataMapFields(), true);
 
@@ -80,9 +84,25 @@ public class WordMlPrepare {
 
 	private Map<DataFieldName, String> getDataMapFields() {
 		Map<DataFieldName, String> result = new HashMap<DataFieldName, String>();
-
-		List<?> objList = getAllElementFromObject(
+		List<Object> objList = getAllElementFromObject(
 				wordMLPackage.getMainDocumentPart(), CTSimpleField.class);
+
+		RelationshipsPart rp = wordMLPackage.getMainDocumentPart()
+				.getRelationshipsPart();
+		for (Relationship r : rp.getJaxbElement().getRelationship()) {
+
+			if (r.getType().equals(Namespaces.HEADER)
+					|| r.getType().equals(Namespaces.FOOTER)) {
+
+				JaxbXmlPart part = (JaxbXmlPart) rp.getPart(r);
+				List<Object> objHeaderFooterList = getAllElementFromObject(
+						part, CTSimpleField.class);
+
+				objList.addAll(objHeaderFooterList);
+
+			}
+		}
+
 		Map<String, String> joinMap = new HashMap<String, String>();
 		for (ObjectMap objMap : objMapList) {
 			joinMap.putAll(objMap.getMap());
@@ -204,8 +224,8 @@ public class WordMlPrepare {
 									Text.class);
 							for (Object textOb : textList) {
 								Text text = (Text) textOb;
-//								System.out.println(text.getValue() + ":"
-//										+ replacementValue);
+								// System.out.println(text.getValue() + ":"
+								// + replacementValue);
 								text.setValue(replacementValue);
 							}
 							p.getContent().add(run);
@@ -226,7 +246,7 @@ public class WordMlPrepare {
 
 	private String getReplacementValue(Map<String, String> replacements,
 			CTSimpleField cts) {
-		String replacementValue = ".";
+		String replacementValue = "";
 		try {
 			String fieldName = getClearFieldName(cts);
 			Filter filter = extractFilter(fieldName);
@@ -237,7 +257,7 @@ public class WordMlPrepare {
 					.get(fieldName));
 			return replacementValue;
 		} catch (Exception e) {
-
+			LOG.error("getReplacementValue", e);
 			return "-";
 		}
 

@@ -12,7 +12,7 @@ public class FilterDateShort implements Filter {
 	public String getValue(String value) throws FilterException {
         //Thu Sep 04 16:42:38 BRT 2014
 		//Fri Sep 05 09:07:07 BRT 2014
-		String pattern = "EEE MMM dd HH:mm:ss zzz yyyy";
+		String pattern = value.length()>10?"EEE MMM dd HH:mm:ss zzz yyyy":"yyyy-MM-dd";
 		SimpleDateFormat  df = new SimpleDateFormat(pattern,Locale.US);
 		try {
 			Date date = df.parse(value);

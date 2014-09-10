@@ -33,8 +33,8 @@ public class FilterExtenso implements Filter {
 
 	public String getValue(String value) throws FilterException {
 		try {
-			BigDecimal dec = new BigDecimal(value);
-			setNumber(dec);
+			Double bValue = new Double(value);
+			setNumber(bValue);
 			return toString();
 		} catch (Exception e) {
 			throw new FilterException(e);

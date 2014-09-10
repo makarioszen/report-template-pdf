@@ -1,7 +1,5 @@
 package br.com.mundialinformatica.reportgen.filters;
 
-import java.math.BigDecimal;
-
 import br.com.mundialinformatica.reportgen.exceptions.FilterException;
 
 public class FilterMaskFloat implements Filter {
@@ -14,7 +12,7 @@ public class FilterMaskFloat implements Filter {
 	public String getValue(String value) throws FilterException {
 		try {
 			String mask = strFilter.replace("maskfloat", "");
-			BigDecimal valuei = new BigDecimal(value);
+			Double valuei = new Double(value);
 			return String.format(mask, valuei);
 		} catch (Exception e) {
 			throw new FilterException(e);
