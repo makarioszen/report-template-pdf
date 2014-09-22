@@ -26,6 +26,7 @@ import org.docx4j.openpackaging.parts.relationships.RelationshipsPart;
 import org.docx4j.relationships.Relationship;
 import org.docx4j.wml.CTSimpleField;
 import org.docx4j.wml.ContentAccessor;
+import org.docx4j.wml.FldChar;
 import org.docx4j.wml.P;
 import org.docx4j.wml.R;
 import org.docx4j.wml.Tbl;
@@ -55,12 +56,14 @@ public class WordMlPrepare {
 		this.objMapList = objMapList;
 		this.wordMLPackage = WordprocessingMLPackage.load(new java.io.File(
 				inputfilepath));
-		setup();
 	}
 
-	private void setup() throws Docx4JException, JAXBException {
-		for (ObjectMap obj : objMapList) {
-			replaceTable(obj);
+	public void setup(boolean mergeFieldInTable) throws Docx4JException,
+			JAXBException {
+		if (mergeFieldInTable) {
+			for (ObjectMap obj : objMapList) {
+				replaceTable(obj);
+			}
 		}
 
 		setMergeFields();
@@ -69,6 +72,12 @@ public class WordMlPrepare {
 	private String getClearFieldName(CTSimpleField ct) {
 		String fieldName = ct.getInstr().replaceAll(
 				"(MERGEFIELD)|(MERGEFORMAT)", "");
+		fieldName = fieldName.substring(0, fieldName.indexOf('\\') - 1).trim();
+		return fieldName;
+	}
+
+	private String getClearFieldName(FldChar ct) {
+		String fieldName = ct.getFldData().getValue();
 		fieldName = fieldName.substring(0, fieldName.indexOf('\\') - 1).trim();
 		return fieldName;
 	}
@@ -82,23 +91,27 @@ public class WordMlPrepare {
 
 	}
 
-	private Map<DataFieldName, String> getDataMapFields() {
+	public Map<org.docx4j.model.fields.merge.DataFieldName, String> getDataMapFields() {
 		Map<DataFieldName, String> result = new HashMap<DataFieldName, String>();
-		List<Object> objList = getAllElementFromObject(
-				wordMLPackage.getMainDocumentPart(), CTSimpleField.class);
+		JaxbXmlPart docPart = wordMLPackage.getMainDocumentPart();
 
-		RelationshipsPart rp = wordMLPackage.getMainDocumentPart()
-				.getRelationshipsPart();
+		List<Object> ctSimpleFieldList = getAllElementFromObject(docPart,
+				CTSimpleField.class);
+		// List<Object> ctFldCharList = getAllElementFromObject(
+		// wordMLPackage.getMainDocumentPart(), FldChar.class);
+
+		RelationshipsPart rp = docPart.getRelationshipsPart();
 		for (Relationship r : rp.getJaxbElement().getRelationship()) {
 
 			if (r.getType().equals(Namespaces.HEADER)
 					|| r.getType().equals(Namespaces.FOOTER)) {
-
 				JaxbXmlPart part = (JaxbXmlPart) rp.getPart(r);
-				List<Object> objHeaderFooterList = getAllElementFromObject(
+				List<Object> ctheaderFooterSimple = getAllElementFromObject(
 						part, CTSimpleField.class);
-
-				objList.addAll(objHeaderFooterList);
+				List<Object> ctHeaderFooterFldCharList = getAllElementFromObject(
+						part, FldChar.class);
+				ctSimpleFieldList.addAll(ctheaderFooterSimple);
+				// ctFldCharList.addAll(ctHeaderFooterFldCharList);
 
 			}
 		}
@@ -107,12 +120,20 @@ public class WordMlPrepare {
 		for (ObjectMap objMap : objMapList) {
 			joinMap.putAll(objMap.getMap());
 		}
-		for (Object object : objList) {
+
+		for (Object object : ctSimpleFieldList) {
 			CTSimpleField ct = (CTSimpleField) object;
 			String fieldName = getClearFieldName(ct);
 			String value = getReplacementValue(joinMap, ct);
 			result.put(new DataFieldName(fieldName), value);
 		}
+
+		// for (Object object : ctFldCharList) {
+		// FldChar ct = (FldChar) object;
+		// String fieldName = getClearFieldName(ct);
+		// String value = getReplacementValue(joinMap, ct);
+		// result.put(new DataFieldName(fieldName), value);
+		// }
 		return result;
 	}
 
@@ -261,6 +282,24 @@ public class WordMlPrepare {
 			return "-";
 		}
 
+	}
+
+	private String getReplacementValue(Map<String, String> replacements,
+			FldChar ct) {
+		String replacementValue = "";
+		try {
+			String fieldName = getClearFieldName(ct);
+			Filter filter = extractFilter(fieldName);
+			fieldName = fieldName.contains("!") ? fieldName.substring(0,
+					fieldName.indexOf('!')) : fieldName;
+
+			replacementValue = filter.getValue((String) replacements
+					.get(fieldName));
+			return replacementValue;
+		} catch (Exception e) {
+			LOG.error("getReplacementValue", e);
+			return "-";
+		}
 	}
 
 	private Filter extractFilter(String fieldName) {
